@@ -25,7 +25,7 @@ class ParaguayDNCPSource(Source):
     def gather_all_download_urls(self):
         record_package_ids = []
 
-        for year in range(2010, (2011 if self.sample else 2019)):
+        for year in range(2016, (2017 if self.sample else 2019)):
             record_package_ids += self.fetchRecordPackageIDs(year)
 
         if self.sample:
@@ -63,39 +63,12 @@ class ParaguayDNCPSource(Source):
 
     # @rate_limited(0.3)
     def save_url(self, filename, data, file_path):
-        if data['data_type'] == 'record_package':
-
-            errors = self.save_content(data['url'], file_path, headers={"Authorization": self.getAccessToken()})
-
-            if errors:
-                return self.SaveUrlResult(errors=errors)
-
-            additional = []
-
-            with open(file_path) as f:
-                json_data = json.load(f)
-
-            if 'packages' in json_data:
-                for url in json_data['packages']:
-
-                    url = url \
-                        .replace('/datos/id/', '/datos/api/v2/doc/ocds/') \
-                        .replace('.json', '')
-
-                    additional.append({
-                        'url': url,
-                        'filename': 'packages-%s.json' % hashlib.md5(url.encode('utf-8')).hexdigest(),
-                        'data_type': 'release_package',
-                    })
-
-            return self.SaveUrlResult(additional_files=additional)
-        else:
-            errors = self.save_content(data['url'], file_path, headers={"Authorization": self.getAccessToken()})
-            return self.SaveUrlResult(errors=errors)
+        errors = self.save_content(data['url'], file_path, headers={"Authorization": self.getAccessToken()})
+        return self.SaveUrlResult(errors=errors)
 
     def save_content(self, url, filepath, headers=None):
         request, errors = get_url_request(url, stream=True, headers=headers)
-        if any('Request exception (Code %s): %s' % (401, 'Invalid or expired token') in s for s in errors):
+        if any('Request exception (Code %s)' % 401 in s for s in errors):
             self.access_token = None
             errors = self.save_content(url, filepath, headers={"Authorization": self.getAccessToken()})
         if not request:
